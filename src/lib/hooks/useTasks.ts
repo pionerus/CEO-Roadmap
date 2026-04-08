@@ -69,6 +69,13 @@ export function useUpdateTask() {
       id,
       ...updates
     }: Partial<Task> & { id: string }) => {
+      // Fetch old values for activity logging
+      const { data: oldTask } = await supabase
+        .from('tasks')
+        .select('status_id, priority, assignee_id')
+        .eq('id', id)
+        .single();
+
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
@@ -76,6 +83,29 @@ export function useUpdateTask() {
         .select()
         .single();
       if (error) throw error;
+
+      // Log activity for key field changes (fire-and-forget)
+      const logFields = [
+        { field: 'status', key: 'status_id' as const },
+        { field: 'priority', key: 'priority' as const },
+        { field: 'assignee', key: 'assignee_id' as const },
+      ];
+      for (const { field, key } of logFields) {
+        if (key in updates && oldTask && (oldTask as Record<string, unknown>)[key] !== (updates as Record<string, unknown>)[key]) {
+          fetch('/api/activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              task_id: id,
+              action: `${field}_changed`,
+              field,
+              old_value: String((oldTask as Record<string, unknown>)[key] ?? ''),
+              new_value: String((updates as Record<string, unknown>)[key] ?? ''),
+            }),
+          }).catch(() => {});
+        }
+      }
+
       return data as Task;
     },
     onSuccess: (data) => {

@@ -7,6 +7,11 @@ import { createClient } from '@/lib/supabase/client';
 import { useTask, useUpdateTask, useDeleteTask } from '@/lib/hooks/useTasks';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { SubtaskList } from './SubtaskList';
+import { DependencyList } from './DependencyList';
+import { TaskEditor } from './TaskEditor';
+import { CommentList } from './CommentList';
+import { ActivityFeed } from './ActivityFeed';
+import { AttachmentList } from './AttachmentList';
 import { formatDate } from '@/lib/utils/dates';
 import type { Status, Profile, ProjectMilestone, Label, Priority, Effort } from '@/lib/types';
 
@@ -117,24 +122,20 @@ export function TaskDetail() {
             className="w-full bg-transparent text-lg font-semibold text-text-primary focus:outline-none"
           />
 
-          {/* Description */}
+          {/* Description — Rich Text */}
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1">
               Description
             </label>
-            <textarea
-              defaultValue={task.description ?? ''}
-              onBlur={(e) => {
-                if (e.target.value !== (task.description ?? '')) {
-                  updateTask.mutate({
-                    id: task.id,
-                    description: e.target.value || null,
-                  });
-                }
+            <TaskEditor
+              content={task.description ?? ''}
+              onChange={(content) => {
+                updateTask.mutate({
+                  id: task.id,
+                  description: content || null,
+                });
               }}
-              rows={3}
               placeholder="Add a description..."
-              className="w-full rounded-lg border border-border bg-bg-primary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none resize-y"
             />
           </div>
 
@@ -295,6 +296,24 @@ export function TaskDetail() {
             taskId={task.id}
             subtasks={task.subtasks ?? []}
           />
+
+          {/* Dependencies */}
+          <DependencyList
+            taskId={task.id}
+            dependencies={task.dependencies ?? []}
+          />
+
+          {/* Attachments */}
+          <AttachmentList taskId={task.id} />
+
+          {/* Comments & Activity tabs */}
+          <div className="border-t border-border pt-4">
+            <CommentList taskId={task.id} />
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <ActivityFeed taskId={task.id} />
+          </div>
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center text-sm text-text-muted">
