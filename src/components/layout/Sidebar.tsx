@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +14,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { CreateProjectDialog } from '@/components/project/CreateProjectDialog';
 import { useThemeStore } from '@/lib/stores/themeStore';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { useAuth } from './AuthGuard';
@@ -25,6 +27,7 @@ export function Sidebar() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useThemeStore();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const [showCreateProject, setShowCreateProject] = useState(false);
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
@@ -137,7 +140,10 @@ export function Sidebar() {
               Projects
             </span>
             {user?.role === 'admin' && (
-              <button className="text-text-muted hover:text-text-primary transition-colors">
+              <button
+                onClick={() => setShowCreateProject(true)}
+                className="text-text-muted hover:text-text-primary transition-colors"
+              >
                 <Plus className="h-3.5 w-3.5" />
               </button>
             )}
@@ -199,6 +205,11 @@ export function Sidebar() {
           Logout
         </button>
       </div>
+
+      <CreateProjectDialog
+        open={showCreateProject}
+        onClose={() => setShowCreateProject(false)}
+      />
     </aside>
   );
 }

@@ -1,10 +1,13 @@
 'use client';
 
-import { use } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
+import { use, useState } from 'react';
+import { useProject } from '@/lib/hooks/useProjects';
+import { ProjectList } from '@/components/project/ProjectList';
+import { CreateMilestoneDialog } from '@/components/project/CreateMilestoneDialog';
+import { CreateTaskDialog } from '@/components/task/CreateTaskDialog';
+import { TaskDetail } from '@/components/task/TaskDetail';
+import { useUIStore } from '@/lib/stores/uiStore';
 import { Folder } from 'lucide-react';
-import type { Project } from '@/lib/types';
 
 export default function ProjectPage({
   params,
@@ -12,19 +15,11 @@ export default function ProjectPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const supabase = createClient();
-
-  const { data: project, isLoading } = useQuery({
-    queryKey: ['project', id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
-      return data as Project | null;
-    },
-  });
+  const { data: project, isLoading } = useProject(id);
+  const taskDetailId = useUIStore((s) => s.taskDetailId);
+  const [showCreateMilestone, setShowCreateMilestone] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [view, setView] = useState<'list' | 'kanban' | 'timeline'>('list');
 
   if (isLoading) {
     return (
@@ -59,38 +54,66 @@ export default function ProjectPage({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="rounded-lg bg-bg-tertiary px-3 py-1.5 text-xs font-medium text-text-secondary">
-            List
+          <button
+            onClick={() => setShowCreateMilestone(true)}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-tertiary transition-colors"
+          >
+            + Milestone
           </button>
-          <button className="rounded-lg px-3 py-1.5 text-xs font-medium text-text-muted hover:text-text-secondary transition-colors">
-            Kanban
+          <button
+            onClick={() => setShowCreateTask(true)}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover transition-colors"
+          >
+            + Task
           </button>
-          <button className="rounded-lg px-3 py-1.5 text-xs font-medium text-text-muted hover:text-text-secondary transition-colors">
-            Timeline
-          </button>
-        </div>
-      </div>
-
-      {/* Empty state */}
-      <div className="flex flex-1 items-center justify-center">
-        <div className="text-center">
-          <Folder className="mx-auto h-12 w-12 text-text-muted" />
-          <h2 className="mt-4 text-lg font-medium text-text-primary">
-            No tasks yet
-          </h2>
-          <p className="mt-1 text-sm text-text-tertiary">
-            Create milestones and tasks to organize your project.
-          </p>
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary hover:bg-bg-tertiary transition-colors">
-              + Milestone
-            </button>
-            <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover transition-colors">
-              + Task
-            </button>
+          <div className="ml-4 flex items-center gap-1">
+            {(['list', 'kanban', 'timeline'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                  view === v
+                    ? 'bg-bg-tertiary text-text-primary'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {view === 'list' && <ProjectList projectId={id} />}
+        {view === 'kanban' && (
+          <div className="flex items-center justify-center h-full text-sm text-text-muted">
+            Kanban view — Phase 5
+          </div>
+        )}
+        {view === 'timeline' && (
+          <div className="flex items-center justify-center h-full text-sm text-text-muted">
+            Timeline view — Phase 5
+          </div>
+        )}
+      </div>
+
+      {/* Task Detail side panel */}
+      {taskDetailId && <TaskDetail />}
+
+      {/* Dialogs */}
+      <CreateMilestoneDialog
+        open={showCreateMilestone}
+        onClose={() => setShowCreateMilestone(false)}
+        projectId={id}
+      />
+      <CreateTaskDialog
+        open={showCreateTask}
+        onClose={() => setShowCreateTask(false)}
+        projectId={id}
+        projectPrefix={project.prefix}
+      />
     </div>
   );
 }

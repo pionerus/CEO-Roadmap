@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npx create-next-app@latest roadmap-os --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(shopt -s dotglob)",
+      "Bash(mv roadmap-os/* .)",
+      "Bash(mv roadmap-os/.* .)",
+      "Bash(rmdir roadmap-os:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}
