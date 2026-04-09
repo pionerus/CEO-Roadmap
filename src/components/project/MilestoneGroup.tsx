@@ -3,23 +3,33 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Link2 } from 'lucide-react';
 import { TaskRow } from '@/components/task/TaskRow';
+import { SortableList } from '@/components/shared/SortableList';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { calculateProgress } from '@/lib/utils/progress';
+import { useReorderTasks } from '@/lib/hooks/useTasks';
 import type { ProjectMilestoneWithTasks, Status } from '@/lib/types';
 
 interface MilestoneGroupProps {
   milestone: ProjectMilestoneWithTasks;
   statuses: Status[];
+  projectId: string;
 }
 
-export function MilestoneGroup({ milestone, statuses }: MilestoneGroupProps) {
+export function MilestoneGroup({ milestone, statuses, projectId }: MilestoneGroupProps) {
   const [expanded, setExpanded] = useState(true);
+  const reorderTasks = useReorderTasks();
 
   const done = milestone.tasks.filter((t) => {
     const status = statuses.find((s) => s.id === t.status_id);
     return status?.is_done;
   }).length;
   const progress = calculateProgress(done, milestone.tasks.length);
+
+  const sortedTasks = [...milestone.tasks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const handleReorder = (newOrder: string[]) => {
+    reorderTasks.mutate({ projectId, orderedIds: newOrder });
+  };
 
   return (
     <div className="mb-4">
@@ -49,14 +59,16 @@ export function MilestoneGroup({ milestone, statuses }: MilestoneGroupProps) {
       {/* Tasks */}
       {expanded && (
         <div className="ml-2 border-l border-border pl-2">
-          {milestone.tasks.length === 0 ? (
+          {sortedTasks.length === 0 ? (
             <p className="px-3 py-2 text-xs text-text-muted">
               No tasks in this milestone
             </p>
           ) : (
-            milestone.tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))
+            <SortableList
+              items={sortedTasks}
+              onReorder={handleReorder}
+              renderItem={(task) => <TaskRow key={task.id} task={task} />}
+            />
           )}
         </div>
       )}

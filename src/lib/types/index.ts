@@ -65,6 +65,7 @@ export interface Task {
   assignee_id?: string | null;
   effort?: Effort | null;
   due_date?: string | null;
+  order: number;
   in_roadmap: boolean;
   created_by?: string | null;
   created_at: string;

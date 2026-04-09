@@ -3,9 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useProjectMilestones } from '@/lib/hooks/useMilestones';
-import { useProjectTasks } from '@/lib/hooks/useTasks';
+import { useProjectTasks, useReorderTasks } from '@/lib/hooks/useTasks';
 import { MilestoneGroup } from './MilestoneGroup';
 import { TaskRow } from '@/components/task/TaskRow';
+import { SortableList } from '@/components/shared/SortableList';
 import type { Status, TaskWithRelations } from '@/lib/types';
 
 interface ProjectListProps {
@@ -18,6 +19,7 @@ export function ProjectList({ projectId }: ProjectListProps) {
     useProjectMilestones(projectId);
   const { data: allTasks = [], isLoading: tasksLoading } =
     useProjectTasks(projectId);
+  const reorderTasks = useReorderTasks();
 
   const { data: statuses = [] } = useQuery({
     queryKey: ['statuses'],
@@ -39,12 +41,26 @@ export function ProjectList({ projectId }: ProjectListProps) {
   }
 
   // Tasks not assigned to any milestone
-  const milestoneTaskIds = new Set(
-    milestones.flatMap((m) => m.tasks.map((t) => t.id))
-  );
   const unassignedTasks = allTasks.filter(
     (t) => !t.project_milestone_id
   ) as TaskWithRelations[];
+
+  const handleReorder = (newOrder: string[]) => {
+    // Build full order: milestone tasks first (by milestone order), then unassigned
+    const allIds: string[] = [];
+    for (const ms of milestones) {
+      for (const t of ms.tasks) {
+        allIds.push(t.id);
+      }
+    }
+    // Replace unassigned portion with new order
+    const milestoneTaskIds = new Set(allIds);
+    const reorderedAll = [
+      ...allIds,
+      ...newOrder.filter((id) => !milestoneTaskIds.has(id)),
+    ];
+    reorderTasks.mutate({ projectId, orderedIds: reorderedAll });
+  };
 
   return (
     <div className="p-4">
@@ -53,6 +69,7 @@ export function ProjectList({ projectId }: ProjectListProps) {
           key={milestone.id}
           milestone={milestone}
           statuses={statuses}
+          projectId={projectId}
         />
       ))}
 
@@ -67,9 +84,11 @@ export function ProjectList({ projectId }: ProjectListProps) {
             </span>
           </div>
           <div className="ml-2 border-l border-border pl-2">
-            {unassignedTasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
+            <SortableList
+              items={unassignedTasks}
+              onReorder={handleReorder}
+              renderItem={(task) => <TaskRow key={task.id} task={task} />}
+            />
           </div>
         </div>
       )}

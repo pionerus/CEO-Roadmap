@@ -8,6 +8,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
+  closestCenter,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
@@ -15,11 +16,12 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { useProjectTasks, useUpdateTask } from '@/lib/hooks/useTasks';
+import { useProjectTasks, useUpdateTask, useReorderTasks } from '@/lib/hooks/useTasks';
 import { useUIStore } from '@/lib/stores/uiStore';
 import { PriorityIcon } from '@/components/shared/PriorityIcon';
 import type { Status, TaskWithRelations } from '@/lib/types';
@@ -32,6 +34,7 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
   const supabase = createClient();
   const { data: tasks = [], isLoading: tasksLoading } = useProjectTasks(projectId);
   const updateTask = useUpdateTask();
+  const reorderTasks = useReorderTasks();
   const openTaskDetail = useUIStore((s) => s.openTaskDetail);
   const [activeTask, setActiveTask] = useState<TaskWithRelations | null>(null);
 
@@ -46,6 +49,24 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
+
+  // Build per-column sorted tasks
+  const columnTasks = new Map<string, TaskWithRelations[]>();
+  for (const s of statuses) {
+    columnTasks.set(
+      s.id,
+      tasks
+        .filter((t) => t.status_id === s.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    );
+  }
+
+  const findColumnForTask = (taskId: string): string | null => {
+    for (const [statusId, colTasks] of columnTasks) {
+      if (colTasks.some((t) => t.id === taskId)) return statusId;
+    }
+    return null;
+  };
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -64,23 +85,46 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
       const taskId = active.id as string;
       const overId = over.id as string;
 
-      // Determine target status: either a column ID or a task in a column
-      let targetStatusId: string | null = null;
-      if (statuses.some((s) => s.id === overId)) {
-        targetStatusId = overId;
-      } else {
-        const overTask = tasks.find((t) => t.id === overId);
-        if (overTask) targetStatusId = overTask.status_id;
+      // Check if dropped on a column (status)
+      const isColumn = statuses.some((s) => s.id === overId);
+
+      if (isColumn) {
+        // Dropped on empty column area
+        const task = tasks.find((t) => t.id === taskId);
+        if (task && task.status_id !== overId) {
+          updateTask.mutate({ id: taskId, status_id: overId });
+        }
+        return;
       }
 
-      if (!targetStatusId) return;
+      // Dropped on another task
+      const sourceCol = findColumnForTask(taskId);
+      const targetCol = findColumnForTask(overId);
+      if (!sourceCol || !targetCol) return;
 
-      const task = tasks.find((t) => t.id === taskId);
-      if (task && task.status_id !== targetStatusId) {
-        updateTask.mutate({ id: taskId, status_id: targetStatusId });
+      if (sourceCol === targetCol) {
+        // Reorder within same column
+        const colTasks = columnTasks.get(sourceCol) ?? [];
+        const oldIndex = colTasks.findIndex((t) => t.id === taskId);
+        const newIndex = colTasks.findIndex((t) => t.id === overId);
+        if (oldIndex === newIndex) return;
+        const reordered = arrayMove(colTasks, oldIndex, newIndex);
+        reorderTasks.mutate({
+          projectId,
+          orderedIds: reordered.map((t) => t.id),
+        });
+      } else {
+        // Move to different column (change status) and insert at position
+        const targetTasks = columnTasks.get(targetCol) ?? [];
+        const insertIndex = targetTasks.findIndex((t) => t.id === overId);
+        updateTask.mutate({ id: taskId, status_id: targetCol });
+        // Reorder target column with new task inserted
+        const newOrder = [...targetTasks.map((t) => t.id)];
+        newOrder.splice(insertIndex, 0, taskId);
+        reorderTasks.mutate({ projectId, orderedIds: newOrder });
       }
     },
-    [statuses, tasks, updateTask]
+    [statuses, tasks, updateTask, reorderTasks, columnTasks, projectId, findColumnForTask]
   );
 
   if (tasksLoading || statusesLoading) {
@@ -94,21 +138,19 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full gap-4 overflow-x-auto p-4">
-        {statuses.map((status) => {
-          const columnTasks = tasks.filter((t) => t.status_id === status.id);
-          return (
-            <KanbanColumn
-              key={status.id}
-              status={status}
-              tasks={columnTasks}
-              onTaskClick={openTaskDetail}
-            />
-          );
-        })}
+        {statuses.map((status) => (
+          <KanbanColumn
+            key={status.id}
+            status={status}
+            tasks={columnTasks.get(status.id) ?? []}
+            onTaskClick={openTaskDetail}
+          />
+        ))}
       </div>
 
       <DragOverlay dropAnimation={null}>
@@ -148,8 +190,8 @@ function KanbanColumn({
 
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[100px] transition-colors ${
-          isOver ? 'bg-accent/5 ring-1 ring-inset ring-accent/20' : ''
+        className={`flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[100px] transition-colors rounded-b-lg ${
+          isOver ? 'bg-accent/10 ring-2 ring-inset ring-accent/30' : ''
         }`}
       >
         <SortableContext
@@ -165,7 +207,7 @@ function KanbanColumn({
           ))}
         </SortableContext>
         {tasks.length === 0 && (
-          <div className="flex items-center justify-center h-20 text-xs text-text-muted">
+          <div className="flex items-center justify-center h-20 text-xs text-text-muted rounded-lg border border-dashed border-border">
             Drop here
           </div>
         )}

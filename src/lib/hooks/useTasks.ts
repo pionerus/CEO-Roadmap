@@ -14,7 +14,7 @@ export function useProjectTasks(projectId: string) {
           '*, subtasks(*), task_labels(label_id), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*)'
         )
         .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .order('order', { ascending: true });
       if (error) throw error;
       return data as TaskWithRelations[];
     },
@@ -204,6 +204,35 @@ export function useDeleteSubtask() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['task', data.taskId] });
+    },
+  });
+}
+
+// Reorder tasks — update order for a batch of task IDs
+export function useReorderTasks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      orderedIds,
+    }: {
+      projectId: string;
+      orderedIds: string[];
+    }) => {
+      // Update each task's order in parallel
+      const updates = orderedIds.map((id, index) =>
+        supabase.from('tasks').update({ order: index }).eq('id', id)
+      );
+      await Promise.all(updates);
+      return { projectId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', 'project', data.projectId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['milestones', 'project', data.projectId],
+      });
     },
   });
 }
