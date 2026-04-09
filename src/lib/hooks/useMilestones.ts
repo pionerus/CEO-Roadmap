@@ -14,7 +14,8 @@ export function useProjectMilestones(projectId: string) {
           '*, tasks(*, subtasks(*), task_labels(label_id), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*))'
         )
         .eq('project_id', projectId)
-        .order('order', { ascending: true });
+        .order('order', { ascending: true })
+        .order('order', { ascending: true, referencedTable: 'tasks' });
       if (error) throw error;
       return data as ProjectMilestoneWithTasks[];
     },

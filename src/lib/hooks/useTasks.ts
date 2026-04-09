@@ -115,7 +115,11 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({
         queryKey: ['tasks', 'project', data.project_id],
       });
+      queryClient.invalidateQueries({
+        queryKey: ['milestones', 'project', data.project_id],
+      });
       queryClient.invalidateQueries({ queryKey: ['task', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['roadmap-data'] });
     },
   });
 }
