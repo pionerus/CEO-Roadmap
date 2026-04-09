@@ -201,6 +201,7 @@ export function ProjectList({ projectId }: ProjectListProps) {
             key={ms.id}
             milestone={ms}
             tasks={tasksByMilestone.get(ms.id) ?? []}
+            allTasks={allTasks}
             statuses={statuses}
             expanded={isExpanded(ms.id)}
             onToggle={() => toggleExpand(ms.id)}
@@ -211,6 +212,7 @@ export function ProjectList({ projectId }: ProjectListProps) {
         {(unassigned.length > 0 || milestones.length > 0) && (
           <NoMilestoneDropZone
             tasks={unassigned}
+            allTasks={allTasks}
             expanded={isExpanded(NO_MILESTONE)}
             onToggle={() => toggleExpand(NO_MILESTONE)}
           />
@@ -238,12 +240,14 @@ export function ProjectList({ projectId }: ProjectListProps) {
 function MilestoneDropZone({
   milestone,
   tasks,
+  allTasks,
   statuses,
   expanded,
   onToggle,
 }: {
   milestone: ProjectMilestoneWithTasks;
   tasks: TaskWithRelations[];
+  allTasks: TaskWithRelations[];
   statuses: Status[];
   expanded: boolean;
   onToggle: () => void;
@@ -297,7 +301,7 @@ function MilestoneDropZone({
               </p>
             ) : (
               tasks.map((task) => (
-                <SortableTaskRow key={task.id} task={task} />
+                <SortableTaskRow key={task.id} task={task} allTasks={allTasks} />
               ))
             )}
           </SortableContext>
@@ -310,10 +314,12 @@ function MilestoneDropZone({
 // "No Milestone" as a droppable zone
 function NoMilestoneDropZone({
   tasks,
+  allTasks,
   expanded,
   onToggle,
 }: {
   tasks: TaskWithRelations[];
+  allTasks: TaskWithRelations[];
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -353,7 +359,7 @@ function NoMilestoneDropZone({
               </p>
             ) : (
               tasks.map((task) => (
-                <SortableTaskRow key={task.id} task={task} />
+                <SortableTaskRow key={task.id} task={task} allTasks={allTasks} />
               ))
             )}
           </SortableContext>
@@ -364,7 +370,7 @@ function NoMilestoneDropZone({
 }
 
 // Sortable + draggable task row
-function SortableTaskRow({ task }: { task: TaskWithRelations }) {
+function SortableTaskRow({ task, allTasks }: { task: TaskWithRelations; allTasks: TaskWithRelations[] }) {
   const {
     attributes,
     listeners,
@@ -393,7 +399,7 @@ function SortableTaskRow({ task }: { task: TaskWithRelations }) {
         <GripVertical className="h-3 w-3" />
       </button>
       <div className="flex-1">
-        <TaskRow task={task} />
+        <TaskRow task={task} allTasks={allTasks} />
       </div>
     </div>
   );

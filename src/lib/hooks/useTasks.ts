@@ -19,6 +19,7 @@ export function useProjectTasks(projectId: string) {
       return data as TaskWithRelations[];
     },
     enabled: !!projectId,
+    placeholderData: (prev) => prev,
   });
 }
 

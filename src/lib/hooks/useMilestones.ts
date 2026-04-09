@@ -20,6 +20,7 @@ export function useProjectMilestones(projectId: string) {
       return data as ProjectMilestoneWithTasks[];
     },
     enabled: !!projectId,
+    placeholderData: (prev) => prev,
   });
 }
 

@@ -9,9 +9,10 @@ import type { TaskWithRelations, Status } from '@/lib/types';
 
 interface TaskRowProps {
   task: TaskWithRelations;
+  allTasks?: TaskWithRelations[]; // pass all project tasks to resolve blocker status
 }
 
-export function TaskRow({ task }: TaskRowProps) {
+export function TaskRow({ task, allTasks }: TaskRowProps) {
   const openTaskDetail = useUIStore((s) => s.openTaskDetail);
   const updateTask = useUpdateTask();
   const supabase = createClient();
@@ -28,6 +29,7 @@ export function TaskRow({ task }: TaskRowProps) {
   });
 
   const currentStatus = task.status ?? statuses.find((s) => s.id === task.status_id);
+  const isDone = currentStatus?.is_done ?? false;
 
   const cycleStatus = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -41,9 +43,37 @@ export function TaskRow({ task }: TaskRowProps) {
   const subtasksTotal = task.subtasks?.length ?? 0;
   const hasSubtasks = subtasksTotal > 0;
 
-  const blockedBy = task.task_dependencies?.filter((d) => d.type === 'blocked_by' && d.source_task_id === task.id) ?? [];
-  const blocks = task.task_dependencies?.filter((d) => d.type === 'blocks' && d.source_task_id === task.id) ?? [];
-  const isBlocked = blockedBy.length > 0;
+  // Dependencies
+  const blockedByDeps = task.task_dependencies?.filter(
+    (d) => d.type === 'blocked_by' && d.source_task_id === task.id
+  ) ?? [];
+  const blocksDeps = task.task_dependencies?.filter(
+    (d) => d.type === 'blocks' && d.source_task_id === task.id
+  ) ?? [];
+
+  // Check if blocking tasks are done — if all blockers are done, task is no longer blocked
+  let activeBlockerCount = blockedByDeps.length;
+  if (allTasks && blockedByDeps.length > 0) {
+    activeBlockerCount = blockedByDeps.filter((dep) => {
+      const blockerTask = allTasks.find((t) => t.id === dep.target_task_id);
+      if (!blockerTask) return true; // can't resolve, assume still blocking
+      const blockerStatus = statuses.find((s) => s.id === blockerTask.status_id);
+      return !blockerStatus?.is_done; // only count if blocker is NOT done
+    }).length;
+  }
+
+  const isBlocked = activeBlockerCount > 0 && !isDone;
+
+  // Count how many tasks this one blocks (that are not yet done)
+  let activeBlocksCount = blocksDeps.length;
+  if (allTasks && blocksDeps.length > 0) {
+    activeBlocksCount = blocksDeps.filter((dep) => {
+      const blockedTask = allTasks.find((t) => t.id === dep.target_task_id);
+      if (!blockedTask) return true;
+      const blockedStatus = statuses.find((s) => s.id === blockedTask.status_id);
+      return !blockedStatus?.is_done;
+    }).length;
+  }
 
   return (
     <div
@@ -71,7 +101,7 @@ export function TaskRow({ task }: TaskRowProps) {
       {/* Title */}
       <span
         className={`flex-1 text-sm truncate ${
-          currentStatus?.is_done
+          isDone
             ? 'text-text-muted line-through'
             : isBlocked
               ? 'text-text-tertiary'
@@ -83,15 +113,15 @@ export function TaskRow({ task }: TaskRowProps) {
 
       {/* Blocked tag with count */}
       {isBlocked && (
-        <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-danger/10 text-danger">
-          blocked{blockedBy.length > 1 ? ` by ${blockedBy.length}` : ''}
+        <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-danger/10 text-danger tabular-nums">
+          blocked{activeBlockerCount > 1 ? ` by ${activeBlockerCount}` : ''}
         </span>
       )}
 
-      {/* Blocks tag with count */}
-      {blocks.length > 0 && (
-        <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-warning/10 text-warning">
-          blocks {blocks.length}
+      {/* Blocks tag with count — only show if actively blocking undone tasks */}
+      {activeBlocksCount > 0 && !isDone && (
+        <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-warning/10 text-warning tabular-nums">
+          blocks {activeBlocksCount}
         </span>
       )}
 
