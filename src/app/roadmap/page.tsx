@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Map } from 'lucide-react';
 import { RoadmapList } from '@/components/roadmap/RoadmapList';
+import { RoadmapDashboard } from '@/components/roadmap/RoadmapDashboard';
 import { CreateGlobalMilestoneDialog } from '@/components/roadmap/CreateGlobalMilestoneDialog';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { useGlobalMilestones } from '@/lib/hooks/useGlobalRoadmap';
@@ -84,9 +85,7 @@ export default function RoadmapPage() {
         ) : view === 'list' ? (
           <RoadmapList />
         ) : (
-          <div className="flex items-center justify-center h-full text-sm text-text-muted">
-            Dashboard view — Phase 5
-          </div>
+          <RoadmapDashboard />
         )}
       </div>
 

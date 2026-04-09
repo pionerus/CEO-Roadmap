@@ -3,6 +3,8 @@
 import { use, useState } from 'react';
 import { useProject } from '@/lib/hooks/useProjects';
 import { ProjectList } from '@/components/project/ProjectList';
+import { ProjectKanban } from '@/components/project/ProjectKanban';
+import { ProjectTimeline } from '@/components/project/ProjectTimeline';
 import { CreateMilestoneDialog } from '@/components/project/CreateMilestoneDialog';
 import { CreateTaskDialog } from '@/components/task/CreateTaskDialog';
 import { TaskDetail } from '@/components/task/TaskDetail';
@@ -87,16 +89,8 @@ export default function ProjectPage({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {view === 'list' && <ProjectList projectId={id} />}
-        {view === 'kanban' && (
-          <div className="flex items-center justify-center h-full text-sm text-text-muted">
-            Kanban view — Phase 5
-          </div>
-        )}
-        {view === 'timeline' && (
-          <div className="flex items-center justify-center h-full text-sm text-text-muted">
-            Timeline view — Phase 5
-          </div>
-        )}
+        {view === 'kanban' && <ProjectKanban projectId={id} />}
+        {view === 'timeline' && <ProjectTimeline projectId={id} />}
       </div>
 
       {/* Task Detail side panel */}
