@@ -132,7 +132,7 @@ export function useRoadmapData() {
       const [tasksRes, milestonesRes, statusesRes, projectsRes] =
         await Promise.all([
           supabase.from('tasks').select(
-            '*, subtasks(*), task_dependencies(*), status:statuses(*), assignee:profiles(*), project:projects(*)'
+            '*, subtasks(*), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*), project:projects(*)'
           ),
           supabase
             .from('project_milestones')

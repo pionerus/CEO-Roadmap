@@ -12,6 +12,7 @@ interface TaskEditorProps {
 
 export function TaskEditor({ content, onChange, placeholder }: TaskEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [StarterKit],
     content: content || '',
     editorProps: {

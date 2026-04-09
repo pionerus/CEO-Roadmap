@@ -48,6 +48,7 @@ export function DependencyList({ taskId, dependencies }: DependencyListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['dep-tasks', taskId] });
       setShowAdd(false);
       setSelectedTaskId('');
     },
@@ -63,6 +64,7 @@ export function DependencyList({ taskId, dependencies }: DependencyListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['dep-tasks', taskId] });
     },
   });
 

@@ -270,6 +270,8 @@ export function TaskDetail() {
                     due_date: e.target.value || null,
                   })
                 }
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                onKeyDown={(e) => e.stopPropagation()}
                 className="w-full rounded-lg border border-border bg-bg-primary px-3 py-1.5 text-sm text-text-primary focus:border-accent focus:outline-none"
               />
             </div>
@@ -300,7 +302,7 @@ export function TaskDetail() {
           {/* Dependencies */}
           <DependencyList
             taskId={task.id}
-            dependencies={task.dependencies ?? []}
+            dependencies={task.task_dependencies ?? []}
           />
 
           {/* Attachments */}

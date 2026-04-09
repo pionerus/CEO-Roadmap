@@ -101,7 +101,7 @@ export function RoadmapDashboard() {
 
   // Blocker summary
   const blockedTasks = tasks.filter((t) => {
-    const deps = t.dependencies ?? [];
+    const deps = t.task_dependencies ?? [];
     return deps.some((d) => d.type === 'blocked_by' && d.source_task_id === t.id);
   });
 

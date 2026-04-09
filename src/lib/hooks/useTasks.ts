@@ -11,7 +11,7 @@ export function useProjectTasks(projectId: string) {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          '*, subtasks(*), task_labels(label_id), task_dependencies(*), status:statuses(*), assignee:profiles(*)'
+          '*, subtasks(*), task_labels(label_id), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*)'
         )
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
@@ -29,7 +29,7 @@ export function useTask(taskId: string) {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          '*, subtasks(*), task_labels(label_id), task_dependencies(*), status:statuses(*), assignee:profiles(*), project:projects(*)'
+          '*, subtasks(*), task_labels(label_id), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*), project:projects(*)'
         )
         .eq('id', taskId)
         .single();
@@ -57,6 +57,9 @@ export function useCreateTask() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: ['tasks', 'project', data.project_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['milestones', 'project', data.project_id],
       });
     },
   });

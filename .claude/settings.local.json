@@ -9,7 +9,15 @@
       "Bash(rmdir roadmap-os:*)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(node -e ':*)",
+      "Bash(curl -s -X POST https://vbnzjhdrorfszsxcmjip.supabase.co/rest/v1/rpc/ -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZibnpqaGRyb3Jmc3pzeGNtamlwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTY4MDI2MSwiZXhwIjoyMDkxMjU2MjYxfQ._6GZ51c79vrEn5Xm1qptuRt3xuJxenDbeGpbAZwpJgQ' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZibnpqaGRyb3Jmc3pzeGNtamlwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTY4MDI2MSwiZXhwIjoyMDkxMjU2MjYxfQ._6GZ51c79vrEn5Xm1qptuRt3xuJxenDbeGpbAZwpJgQ')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/login)",
+      "Bash(curl -v http://localhost:3000/login)",
+      "Bash(npx kill-port:*)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} - %{size_download} bytes\\\\n\" --connect-timeout 5 http://localhost:3000/login)"
     ]
   }
 }

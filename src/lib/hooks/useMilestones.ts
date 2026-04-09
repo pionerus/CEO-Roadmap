@@ -11,7 +11,7 @@ export function useProjectMilestones(projectId: string) {
       const { data, error } = await supabase
         .from('project_milestones')
         .select(
-          '*, tasks(*, subtasks(*), task_labels(label_id), task_dependencies(*), status:statuses(*), assignee:profiles(*))'
+          '*, tasks(*, subtasks(*), task_labels(label_id), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*))'
         )
         .eq('project_id', projectId)
         .order('order', { ascending: true });

@@ -1,21 +1,22 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
+  useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useState } from 'react';
+import { CSS } from '@dnd-kit/utilities';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useProjectTasks, useUpdateTask } from '@/lib/hooks/useTasks';
@@ -43,7 +44,7 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
   const handleDragStart = useCallback(
@@ -56,21 +57,27 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      const { active, over } = event;
       setActiveTask(null);
-
+      const { active, over } = event;
       if (!over) return;
 
       const taskId = active.id as string;
-      const targetStatusId = over.id as string;
+      const overId = over.id as string;
 
-      // Check if dropped on a status column
-      const isStatusColumn = statuses.some((s) => s.id === targetStatusId);
-      if (isStatusColumn) {
-        const task = tasks.find((t) => t.id === taskId);
-        if (task && task.status_id !== targetStatusId) {
-          updateTask.mutate({ id: taskId, status_id: targetStatusId });
-        }
+      // Determine target status: either a column ID or a task in a column
+      let targetStatusId: string | null = null;
+      if (statuses.some((s) => s.id === overId)) {
+        targetStatusId = overId;
+      } else {
+        const overTask = tasks.find((t) => t.id === overId);
+        if (overTask) targetStatusId = overTask.status_id;
+      }
+
+      if (!targetStatusId) return;
+
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && task.status_id !== targetStatusId) {
+        updateTask.mutate({ id: taskId, status_id: targetStatusId });
       }
     },
     [statuses, tasks, updateTask]
@@ -87,7 +94,6 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
@@ -105,8 +111,12 @@ export function ProjectKanban({ projectId }: ProjectKanbanProps) {
         })}
       </div>
 
-      <DragOverlay>
-        {activeTask && <KanbanCard task={activeTask} isDragging />}
+      <DragOverlay dropAnimation={null}>
+        {activeTask && (
+          <div className="w-60 rounded-lg border border-accent bg-bg-primary p-2.5 shadow-xl rotate-2">
+            <CardContent task={activeTask} />
+          </div>
+        )}
       </DragOverlay>
     </DndContext>
   );
@@ -121,9 +131,10 @@ function KanbanColumn({
   tasks: TaskWithRelations[];
   onTaskClick: (id: string) => void;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: status.id });
+
   return (
     <div className="flex w-64 flex-shrink-0 flex-col rounded-lg bg-bg-secondary">
-      {/* Column header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
         <div
           className="h-2.5 w-2.5 rounded-full"
@@ -135,48 +146,79 @@ function KanbanColumn({
         <span className="ml-auto text-xs text-text-muted">{tasks.length}</span>
       </div>
 
-      {/* Droppable area */}
-      <SortableContext
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-        id={status.id}
+      <div
+        ref={setNodeRef}
+        className={`flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[100px] transition-colors ${
+          isOver ? 'bg-accent/5 ring-1 ring-inset ring-accent/20' : ''
+        }`}
       >
-        <div
-          className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[100px]"
-          data-status-id={status.id}
-          id={status.id}
+        <SortableContext
+          items={tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
         >
           {tasks.map((task) => (
-            <KanbanCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} />
+            <SortableCard
+              key={task.id}
+              task={task}
+              onClick={() => onTaskClick(task.id)}
+            />
           ))}
-        </div>
-      </SortableContext>
+        </SortableContext>
+        {tasks.length === 0 && (
+          <div className="flex items-center justify-center h-20 text-xs text-text-muted">
+            Drop here
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function KanbanCard({
+function SortableCard({
   task,
-  isDragging,
   onClick,
 }: {
   task: TaskWithRelations;
-  isDragging?: boolean;
-  onClick?: () => void;
+  onClick: () => void;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => {
+        if (!isDragging) onClick();
+      }}
+      className={`rounded-lg border border-border bg-bg-primary p-2.5 cursor-grab active:cursor-grabbing transition-colors ${
+        isDragging ? 'opacity-30' : 'hover:border-border-hover'
+      }`}
+    >
+      <CardContent task={task} />
+    </div>
+  );
+}
+
+function CardContent({ task }: { task: TaskWithRelations }) {
   const subtasksDone = task.subtasks?.filter((s) => s.done).length ?? 0;
   const subtasksTotal = task.subtasks?.length ?? 0;
 
   return (
-    <div
-      onClick={onClick}
-      className={`rounded-lg border border-border bg-bg-primary p-2.5 cursor-pointer transition-all ${
-        isDragging
-          ? 'shadow-xl opacity-90 rotate-2'
-          : 'hover:border-border-hover'
-      }`}
-      id={task.id}
-    >
+    <>
       <div className="flex items-center gap-1.5 mb-1">
         <PriorityIcon priority={task.priority} />
         <span className="text-[10px] font-mono text-text-muted">
@@ -201,6 +243,6 @@ function KanbanCard({
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

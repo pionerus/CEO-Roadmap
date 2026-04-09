@@ -41,8 +41,8 @@ export function TaskRow({ task }: TaskRowProps) {
   const subtasksTotal = task.subtasks?.length ?? 0;
   const hasSubtasks = subtasksTotal > 0;
 
-  const blockedBy = task.dependencies?.filter((d) => d.type === 'blocked_by' && d.source_task_id === task.id) ?? [];
-  const blocks = task.dependencies?.filter((d) => d.type === 'blocks' && d.source_task_id === task.id) ?? [];
+  const blockedBy = task.task_dependencies?.filter((d) => d.type === 'blocked_by' && d.source_task_id === task.id) ?? [];
+  const blocks = task.task_dependencies?.filter((d) => d.type === 'blocks' && d.source_task_id === task.id) ?? [];
   const isBlocked = blockedBy.length > 0;
 
   return (

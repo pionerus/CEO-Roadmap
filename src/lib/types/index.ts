@@ -159,7 +159,8 @@ export interface GlobalMilestoneLink {
 export interface TaskWithRelations extends Task {
   subtasks?: Subtask[];
   labels?: Label[];
-  dependencies?: TaskDependency[];
+  task_dependencies?: TaskDependency[];
+  task_labels?: { label_id: string }[];
   status?: Status;
   assignee?: Profile;
   project?: Project;

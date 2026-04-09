@@ -58,28 +58,38 @@ export function CreateTaskDialog({
   });
 
   const defaultStatus = statuses.find((s) => s.is_default);
+  const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (!title || !defaultStatus) return;
+    if (!title) return;
+    if (!defaultStatus) {
+      setError('No default status found. Go to Settings > Statuses and set a default.');
+      return;
+    }
+    setError('');
 
-    const identifier = await generateIdentifier(supabase, projectId, projectPrefix);
+    try {
+      const identifier = await generateIdentifier(supabase, projectId, projectPrefix);
 
-    await createTask.mutateAsync({
-      project_id: projectId,
-      title,
-      identifier,
-      status_id: defaultStatus.id,
-      priority,
-      project_milestone_id: milestoneId || null,
-      assignee_id: assigneeId || null,
-      in_roadmap: false,
-    } as any);
+      await createTask.mutateAsync({
+        project_id: projectId,
+        title,
+        identifier,
+        status_id: defaultStatus.id,
+        priority,
+        project_milestone_id: milestoneId || null,
+        assignee_id: assigneeId || null,
+        in_roadmap: false,
+      } as any);
 
-    onClose();
-    setTitle('');
-    setPriority('none');
-    setMilestoneId('');
-    setAssigneeId('');
+      onClose();
+      setTitle('');
+      setPriority('none');
+      setMilestoneId('');
+      setAssigneeId('');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create task');
+    }
   };
 
   return (
@@ -155,6 +165,10 @@ export function CreateTaskDialog({
             </select>
           </div>
         </div>
+
+        {error && (
+          <p className="text-sm text-danger">{error}</p>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button
