@@ -71,20 +71,24 @@ export function TaskRow({ task }: TaskRowProps) {
       {/* Title */}
       <span
         className={`flex-1 text-sm truncate ${
-          isBlocked ? 'text-text-tertiary' : 'text-text-primary'
+          currentStatus?.is_done
+            ? 'text-text-muted line-through'
+            : isBlocked
+              ? 'text-text-tertiary'
+              : 'text-text-primary'
         }`}
       >
         {task.title}
       </span>
 
-      {/* Blocked tag */}
+      {/* Blocked tag with count */}
       {isBlocked && (
         <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-danger/10 text-danger">
-          blocked
+          blocked{blockedBy.length > 1 ? ` by ${blockedBy.length}` : ''}
         </span>
       )}
 
-      {/* Blocks tag */}
+      {/* Blocks tag with count */}
       {blocks.length > 0 && (
         <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-warning/10 text-warning">
           blocks {blocks.length}

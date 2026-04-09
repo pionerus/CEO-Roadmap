@@ -9,6 +9,7 @@ import { CreateMilestoneDialog } from '@/components/project/CreateMilestoneDialo
 import { CreateTaskDialog } from '@/components/task/CreateTaskDialog';
 import { TaskDetail } from '@/components/task/TaskDetail';
 import { useUIStore } from '@/lib/stores/uiStore';
+import { FilterBar } from '@/components/shared/FilterBar';
 import { Folder } from 'lucide-react';
 
 export default function ProjectPage({
@@ -84,6 +85,11 @@ export default function ProjectPage({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="border-b border-border px-6 py-2">
+        <FilterBar />
       </div>
 
       {/* Content */}

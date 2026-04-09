@@ -31,6 +31,7 @@ import {
 import { TaskRow } from '@/components/task/TaskRow';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { calculateProgress } from '@/lib/utils/progress';
+import { useFilterStore } from '@/lib/stores/filterStore';
 import type { Status, TaskWithRelations, ProjectMilestoneWithTasks } from '@/lib/types';
 
 interface ProjectListProps {
@@ -62,15 +63,39 @@ export function ProjectList({ projectId }: ProjectListProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  // Filters
+  const { hideDone, priorityFilter, assigneeFilter } = useFilterStore();
+
+  const applyFilters = (tasks: TaskWithRelations[]): TaskWithRelations[] => {
+    let filtered = tasks;
+    if (hideDone) {
+      filtered = filtered.filter((t) => {
+        const st = statuses.find((s) => s.id === t.status_id);
+        return !st?.is_done;
+      });
+    }
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter((t) => t.priority === priorityFilter);
+    }
+    if (assigneeFilter !== 'all') {
+      filtered = filtered.filter((t) => t.assignee_id === assigneeFilter);
+    }
+    return filtered;
+  };
+
   // Build task groups by milestone
   const tasksByMilestone = new Map<string, TaskWithRelations[]>();
   for (const ms of milestones) {
-    const msTasks = (ms.tasks ?? []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    tasksByMilestone.set(ms.id, msTasks as TaskWithRelations[]);
+    const msTasks = applyFilters(
+      ((ms.tasks ?? []) as TaskWithRelations[]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    );
+    tasksByMilestone.set(ms.id, msTasks);
   }
-  const unassigned = allTasks
-    .filter((t) => !t.project_milestone_id)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const unassigned = applyFilters(
+    allTasks
+      .filter((t) => !t.project_milestone_id)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  );
   tasksByMilestone.set(NO_MILESTONE, unassigned);
 
   const findGroupForTask = (taskId: string): string | null => {
