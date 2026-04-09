@@ -19,13 +19,15 @@ export function MilestoneGroup({ milestone, statuses, projectId }: MilestoneGrou
   const [expanded, setExpanded] = useState(true);
   const reorderTasks = useReorderTasks();
 
-  const done = milestone.tasks.filter((t) => {
+  const tasks = milestone.tasks ?? [];
+
+  const done = tasks.filter((t) => {
     const status = statuses.find((s) => s.id === t.status_id);
     return status?.is_done;
   }).length;
-  const progress = calculateProgress(done, milestone.tasks.length);
+  const progress = calculateProgress(done, tasks.length);
 
-  const sortedTasks = [...milestone.tasks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const sortedTasks = [...tasks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const handleReorder = (newOrder: string[]) => {
     reorderTasks.mutate({ projectId, orderedIds: newOrder });
