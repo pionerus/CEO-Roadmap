@@ -83,11 +83,13 @@ export function ProjectList({ projectId }: ProjectListProps) {
     return filtered;
   };
 
-  // Build task groups by milestone
+  // Build task groups by milestone — use allTasks as single source of truth
   const tasksByMilestone = new Map<string, TaskWithRelations[]>();
   for (const ms of milestones) {
     const msTasks = applyFilters(
-      ((ms.tasks ?? []) as TaskWithRelations[]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      allTasks
+        .filter((t) => t.project_milestone_id === ms.id)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     );
     tasksByMilestone.set(ms.id, msTasks);
   }

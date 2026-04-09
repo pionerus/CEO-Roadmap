@@ -113,14 +113,13 @@ export function useUpdateTask() {
       return data as Task;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: ['tasks', 'project', data.project_id],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['milestones', 'project', data.project_id],
-      });
-      queryClient.invalidateQueries({ queryKey: ['task', data.id] });
-      queryClient.invalidateQueries({ queryKey: ['roadmap-data'] });
+      // Refetch all related queries together to avoid partial state
+      Promise.all([
+        queryClient.refetchQueries({ queryKey: ['tasks', 'project', data.project_id] }),
+        queryClient.refetchQueries({ queryKey: ['milestones', 'project', data.project_id] }),
+        queryClient.refetchQueries({ queryKey: ['task', data.id] }),
+        queryClient.refetchQueries({ queryKey: ['roadmap-data'] }),
+      ]);
     },
   });
 }
