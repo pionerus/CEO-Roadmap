@@ -8,15 +8,33 @@ export function useProjectTasks(projectId: string) {
   return useQuery({
     queryKey: ['tasks', 'project', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch tasks without deps (to avoid FK ambiguity)
+      const { data: tasks, error } = await supabase
         .from('tasks')
         .select(
-          '*, subtasks(*), task_labels(label_id), task_dependencies!task_dependencies_source_task_id_fkey(*), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*)'
+          '*, subtasks(*), task_labels(label_id), status:statuses(*), assignee:profiles!tasks_assignee_id_fkey(*)'
         )
         .eq('project_id', projectId)
         .order('order', { ascending: true });
       if (error) throw error;
-      return data as TaskWithRelations[];
+
+      // Fetch ALL deps for this project's tasks in both directions
+      const taskIds = (tasks ?? []).map((t) => t.id);
+      if (taskIds.length === 0) return [] as TaskWithRelations[];
+
+      const [{ data: depsAsSource }, { data: depsAsTarget }] = await Promise.all([
+        supabase.from('task_dependencies').select('*').in('source_task_id', taskIds),
+        supabase.from('task_dependencies').select('*').in('target_task_id', taskIds),
+      ]);
+
+      // Merge deps into tasks
+      const allDeps = [...(depsAsSource ?? []), ...(depsAsTarget ?? [])];
+      return (tasks ?? []).map((t) => ({
+        ...t,
+        task_dependencies: allDeps.filter(
+          (d) => d.source_task_id === t.id || d.target_task_id === t.id
+        ),
+      })) as TaskWithRelations[];
     },
     enabled: !!projectId,
     placeholderData: (prev) => prev,

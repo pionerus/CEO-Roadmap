@@ -43,35 +43,43 @@ export function TaskRow({ task, allTasks }: TaskRowProps) {
   const subtasksTotal = task.subtasks?.length ?? 0;
   const hasSubtasks = subtasksTotal > 0;
 
-  // Dependencies
-  const blockedByDeps = task.task_dependencies?.filter(
-    (d) => d.type === 'blocked_by' && d.source_task_id === task.id
-  ) ?? [];
-  const blocksDeps = task.task_dependencies?.filter(
-    (d) => d.type === 'blocks' && d.source_task_id === task.id
-  ) ?? [];
+  // Dependencies — check both directions
+  const deps = task.task_dependencies ?? [];
 
-  // Check if blocking tasks are done — if all blockers are done, task is no longer blocked
-  let activeBlockerCount = blockedByDeps.length;
-  if (allTasks && blockedByDeps.length > 0) {
-    activeBlockerCount = blockedByDeps.filter((dep) => {
-      const blockerTask = allTasks.find((t) => t.id === dep.target_task_id);
-      if (!blockerTask) return true; // can't resolve, assume still blocking
-      const blockerStatus = statuses.find((s) => s.id === blockerTask.status_id);
-      return !blockerStatus?.is_done; // only count if blocker is NOT done
-    }).length;
+  // Tasks that block THIS task (this task is blocked)
+  const blockerTaskIds = new Set<string>();
+  for (const d of deps) {
+    if (d.type === 'blocked_by' && d.source_task_id === task.id) blockerTaskIds.add(d.target_task_id);
+    if (d.type === 'blocks' && d.target_task_id === task.id) blockerTaskIds.add(d.source_task_id);
   }
 
+  // Tasks that THIS task blocks
+  const blockedTaskIds = new Set<string>();
+  for (const d of deps) {
+    if (d.type === 'blocks' && d.source_task_id === task.id) blockedTaskIds.add(d.target_task_id);
+    if (d.type === 'blocked_by' && d.target_task_id === task.id) blockedTaskIds.add(d.source_task_id);
+  }
+
+  // Count active blockers (blockers that are NOT done)
+  let activeBlockerCount = blockerTaskIds.size;
+  if (allTasks && blockerTaskIds.size > 0) {
+    activeBlockerCount = [...blockerTaskIds].filter((id) => {
+      const t = allTasks.find((t) => t.id === id);
+      if (!t) return true;
+      const s = statuses.find((s) => s.id === t.status_id);
+      return !s?.is_done;
+    }).length;
+  }
   const isBlocked = activeBlockerCount > 0 && !isDone;
 
-  // Count how many tasks this one blocks (that are not yet done)
-  let activeBlocksCount = blocksDeps.length;
-  if (allTasks && blocksDeps.length > 0) {
-    activeBlocksCount = blocksDeps.filter((dep) => {
-      const blockedTask = allTasks.find((t) => t.id === dep.target_task_id);
-      if (!blockedTask) return true;
-      const blockedStatus = statuses.find((s) => s.id === blockedTask.status_id);
-      return !blockedStatus?.is_done;
+  // Count active blocks (tasks we block that are NOT done)
+  let activeBlocksCount = blockedTaskIds.size;
+  if (allTasks && blockedTaskIds.size > 0) {
+    activeBlocksCount = [...blockedTaskIds].filter((id) => {
+      const t = allTasks.find((t) => t.id === id);
+      if (!t) return true;
+      const s = statuses.find((s) => s.id === t.status_id);
+      return !s?.is_done;
     }).length;
   }
 
